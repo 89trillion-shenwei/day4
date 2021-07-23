@@ -2,6 +2,7 @@ package handler
 
 import (
 	"day4/internal/service"
+	"day4/internal/util"
 	"day4/model"
 	"encoding/json"
 	"fmt"
@@ -32,7 +33,7 @@ func TestRegister(t *testing.T) {
 	client := model.GetClient()
 	uid, _ := Register(client)
 	str, _ := Login(uid, client)
-	var data []byte = []byte(str)
+	var data = []byte(str)
 	message := model.Message{}
 	err := json.Unmarshal(data, &message)
 	if err != nil {
@@ -49,6 +50,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	util.Init()
 	//data :=make([]byte,0)
 	client := model.GetClient()
 	uid, err := Register(client)
@@ -57,14 +59,16 @@ func TestUpdate(t *testing.T) {
 	}
 	user := service.User{}
 	user.UserName = uid
-	data, err1 := Update(user, "9f3d007c")
+	data, err1 := Update(user, "5d22480d")
+	if err1 != nil {
+		t.Log(err1)
+	}
 	ge := model.GeneralReward{}
 	proto.Unmarshal(data, &ge)
 	if err1 != nil {
 		fmt.Println(err1)
 	}
-	t.Log(ge.Changes)
-	if ge.Counter[1001] == 4 && ge.Counter[1002] == 8 {
+	if ge.Changes[1001] == 4 && ge.Changes[1002] == 8 {
 		t.Log("success")
 		return
 	} else {
