@@ -34,6 +34,7 @@ type List struct {
 	Amount string // 物品数量
 }
 
+// GetList 领取信息列表
 type GetList struct {
 	GetorName string //领取人用户名
 	GetTime   string //领取时间
