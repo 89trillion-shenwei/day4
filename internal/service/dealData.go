@@ -8,8 +8,24 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/mgo.v2/bson"
 	"strconv"
+	"sync"
 	"time"
 )
+
+var (
+	wg       sync.WaitGroup
+	lockChan = make(chan struct{}, 1)
+)
+
+// 如果lockChan中为空则阻塞
+func getLock() {
+	<-lockChan
+}
+
+// 重新填充lockChan
+func releaseLock() {
+	lockChan <- struct{}{}
+}
 
 // List 物品列表
 type List struct {
@@ -80,6 +96,8 @@ func json2struct1(byts []byte, message *Mess) bool {
 
 // StrUpdate 用户领取礼品时更新数据库，增加领取人列表，修改可领取次数和已领取次数，返回礼品列表
 func (User *User) StrUpdate(key string) ([]List, error) {
+	//上锁
+	releaseLock()
 	c1 := model2.RedisPool.Get()
 	c2 := model2.RedisPool1.Get()
 	defer c1.Close()
@@ -180,6 +198,8 @@ func (User *User) StrUpdate(key string) ([]List, error) {
 				fmt.Println("set ok.")
 			}
 		}
+		//解锁
+		getLock()
 		//返回礼品内容
 		return message.List, nil
 	}
