@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-//登录api
+// LoginApi 登录api
 func LoginApi(c *gin.Context) (string, error) {
 	//message :=model.Message{}
 	uid := c.PostForm("uid")
@@ -21,7 +21,7 @@ func LoginApi(c *gin.Context) (string, error) {
 	return json, nil
 }
 
-//注册api
+// RegisterApi 注册api
 func RegisterApi(c *gin.Context) (string, error) {
 	client := model.GetClient()
 	uid, err := handler.Register(client)
@@ -31,7 +31,7 @@ func RegisterApi(c *gin.Context) (string, error) {
 	return uid, nil
 }
 
-//领取礼品api
+// ReceiveGiftsApi 领取礼品api
 func ReceiveGiftsApi(c *gin.Context) ([]byte, error) {
 	user := new(service.User)
 	key := c.PostForm("key")
@@ -47,7 +47,7 @@ func ReceiveGiftsApi(c *gin.Context) ([]byte, error) {
 	}
 	re, err := handler.Update(*user, key)
 	if err != nil {
-		return nil, internal.InternalServiceError(err.Error())
+		return nil, err
 	}
 	return re, nil
 }
@@ -55,6 +55,7 @@ func ReceiveGiftsApi(c *gin.Context) ([]byte, error) {
 type Api1 func(c *gin.Context) (string, error)
 type Api2 func(c *gin.Context) ([]byte, error)
 
+// ReturnData 返回json字符串
 func ReturnData(api Api1) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data, err := api(c)
@@ -69,12 +70,13 @@ func ReturnData(api Api1) gin.HandlerFunc {
 	}
 }
 
+// ReturnProto 返回byte[]
 func ReturnProto(api Api2) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		data, err := api(c)
 		if err != nil {
 			globalError := err.(internal.GlobalError)
-			c.JSON(globalError.Status, data)
+			c.JSON(globalError.Status, globalError)
 			return
 		}
 		c.JSON(http.StatusOK, data)

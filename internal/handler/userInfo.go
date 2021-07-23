@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"day4"
 	"day4/internal"
 	"day4/internal/service"
 	"day4/model"
@@ -19,7 +18,7 @@ func Login(uid string, client *mgo.Collection) (string, error) {
 	err := client.Find(bson.M{"uid": uid}).One(&message)
 	if err != nil {
 		fmt.Println("未找到此uid，请注册")
-		return "", day4.NoRegError("未找到此uid，请注册,登录失败,错误原因为：" + err.Error())
+		return "", internal.NoRegError("未找到此uid，请注册,登录失败,错误原因为：" + err.Error())
 	}
 	//登录成功，返回数据库数据
 	message1 := model.Message{}
@@ -58,10 +57,13 @@ func testUpdate(client *mgo.Collection, uid, goldnum, diamondnum string) {
 
 // Update 用户领取礼品，更新数据
 func Update(user service.User, key string) ([]byte, error) {
+	if !service.CheckId(user.UserName) {
+		return nil, internal.NoRegError("用户未注册")
+	}
 	if service.CheckKey(key) {
 		lists, err := user.StrUpdate(key)
 		if err != nil {
-			return nil, internal.InternalServiceError("更新失败" + err.Error())
+			return nil, err
 		}
 		//声明接收数据的结构体
 		general := model.GeneralReward{}
@@ -118,11 +120,13 @@ func String2Int32(str string) int32 {
 	return int32(in)
 }
 
+// String2UInt32 字符串转uint32
 func String2UInt32(str string) uint32 {
 	in, _ := strconv.ParseInt(str, 10, 32)
 	return uint32(in)
 }
 
+// String2UInt64 字符串转uint64
 func String2UInt64(str string) uint64 {
 	in, _ := strconv.Atoi(str)
 	return uint64(in)

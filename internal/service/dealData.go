@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"gopkg.in/mgo.v2/bson"
 	"strconv"
 	"time"
 )
@@ -21,16 +22,23 @@ type GetList struct {
 	GetTime   string //领取时间
 }
 
-// Message redis存储的信息
+// Message redis存储的礼品码信息
 type Message struct {
-	Description    string    //礼品描述
-	List           []List    //礼品内容列表（物品，数量）
+	Description string //礼品描述
+	CodeType    string //礼品码类型
+	List        []List //礼品内容列表（物品，数量）
+	ValidPeriod string //有效期
+	GiftCode    string //礼品码
+	CanGetUser  string //允许领取用户
+	Creator     string //创建者账号
+	CreatTime   string //创建时间
+}
+
+// Mess redis存储的领取信息
+type Mess struct {
 	AvailableTimes string    //可领取次数
-	ValidPeriod    string    //有效期
-	GiftCode       string    //礼品码
 	ReceivedTimes  string    //已领取次数
-	Creator        string    //创建者账号
-	CreatTime      string    //创建时间
+	GiftCode       string    //礼品码
 	GetList        []GetList //领取列表
 }
 
@@ -42,17 +50,6 @@ type Creator struct {
 // User 用户信息
 type User struct {
 	UserName string //用户账号
-}
-
-//字符串转时间戳
-func String2Time(s string) int64 {
-	loc, _ := time.LoadLocation("Local")
-	theTime, err := time.ParseInLocation("2006-01-02 15:04:05", s, loc)
-	if err != nil {
-		return 0
-	}
-	unixTime := theTime.Unix()
-	return unixTime
 }
 
 //结构体转json
@@ -71,81 +68,124 @@ func json2struct(byts []byte, message *Message) bool {
 
 }
 
-// StrSet 创建数据
-func (creator *Creator) StrSet(key string, message Message) error {
-	c := model2.RedisPool.Get()
-	defer c.Close()
-	//将结构体转为json字符串在存入redis
-	_, err2 := c.Do("SET", key, struct2json(message))
-	if err2 != nil {
-		return internal.InternalServiceError(err2.Error())
-	} else {
-		return nil
+//json转结构体
+func json2struct1(byts []byte, message *Mess) bool {
+	err := json.Unmarshal(byts, message)
+	if err != nil {
+		return false
 	}
-}
+	return true
 
-// StrGet 查询数据，返回所有数据
-func (creator *Creator) StrGet(key string) string {
-	c := model2.RedisPool.Get()
-	defer c.Close()
-	res, _ := redis.String(c.Do("GET", key))
-	return res
 }
 
 // StrUpdate 用户领取礼品时更新数据库，增加领取人列表，修改可领取次数和已领取次数，返回礼品列表
 func (User *User) StrUpdate(key string) ([]List, error) {
-	c := model2.RedisPool.Get()
-	defer c.Close()
+	c1 := model2.RedisPool.Get()
+	c2 := model2.RedisPool1.Get()
+	defer c1.Close()
+	defer c2.Close()
 	//查询数据
-	res, err := redis.String(c.Do("Get", key))
-	if err != nil {
-		return nil, internal.InternalServiceError(err.Error())
+	res1, err1 := redis.String(c1.Do("Get", key))
+	res2, err2 := redis.String(c2.Do("Get", key))
+	if err1 != nil || err2 != nil {
+		return nil, internal.InternalServiceError(err1.Error() + err2.Error())
 	} else {
-		var byts []byte
-		byts = []byte(res)
+		var byts1, byts2 []byte
+		byts1 = []byte(res1) //礼品码信息
+		byts2 = []byte(res2) //领取信息
+		mess := Mess{}
 		message := Message{}
 		//json转结构体成功
-		if json2struct(byts, &message) {
+		if json2struct(byts1, &message) && json2struct1(byts2, &mess) {
 			fmt.Println("success")
 		}
-		getList := new(GetList)
-		//用户名
-		getList.GetorName = User.UserName
-		//领取时间
-		getList.GetTime = time.Now().Format("2006-01-02 15:04:05")
-		//判断领取时间是否超出有效期
-		if String2Time(getList.GetTime) >= String2Time(message.ValidPeriod) {
-			return nil, internal.KeyExpiredError("该礼品码已过期")
+		//如果礼品可领取次数为0，退出
+		if mess.AvailableTimes == "0" {
+			return nil, internal.NoGiftError("礼品已领完")
 		}
-		//判断该用户是否已经使用过该礼品码
-		/*if findUser(message.GetList, User.UserName) {
-			return nil, internal.UserHasEeceivedError("你已使用过该礼品码")
-		}*/
-		message.GetList = append(message.GetList, *getList)
-		//可领取次数
-		av, _ := strconv.Atoi(message.AvailableTimes)
-		if av == 0 {
-			return nil, internal.NoGiftError("该礼品码已被领取完毕")
-		}
-		av -= 1
-		//已领取次数
-		re, _ := strconv.Atoi(message.ReceivedTimes)
-		re += 1
-		message.ReceivedTimes = strconv.Itoa(re)
-		message.AvailableTimes = strconv.Itoa(av)
-		//提交更改后的数据
-		_, err := c.Do("SET", key, struct2json(message))
-		if err != nil {
-			return nil, internal.InternalServiceError(err.Error())
+		//指定用户一次性消耗
+		if message.CodeType == "1" {
+			//如果用户是指定用户
+			if message.CanGetUser == User.UserName {
+				getList := new(GetList)
+				//用户名
+				getList.GetorName = User.UserName
+				//领取时间
+				getList.GetTime = time.Now().Format("2006-01-02 15:04:05")
+				mess.GetList = append(mess.GetList, *getList)
+				//可领取次数
+				av, _ := strconv.Atoi(mess.AvailableTimes)
+				av -= 1
+				//已领取次数
+				re, _ := strconv.Atoi(mess.ReceivedTimes)
+				re += 1
+				mess.ReceivedTimes = strconv.Itoa(re)
+				mess.AvailableTimes = strconv.Itoa(av)
+				//提交更改后的数据
+				_, err := c2.Do("SET", key, struct2json(mess))
+				if err != nil {
+					return nil, internal.InternalServiceError(err.Error())
+				} else {
+					fmt.Println("set ok.")
+				}
+			} else {
+				return nil, internal.NoCanGetUserError("非指定用户")
+			}
+		} else if message.CodeType == "2" { //不指定用户,限制次数
+			getList := new(GetList)
+			//用户名
+			getList.GetorName = User.UserName
+			//领取时间
+			getList.GetTime = time.Now().Format("2006-01-02 15:04:05")
+			//判断该用户是否已经使用过该礼品码
+			if findUser(mess.GetList, User.UserName) {
+				return nil, internal.UserHasEeceivedError("你已使用过该礼品码")
+			}
+			mess.GetList = append(mess.GetList, *getList)
+			//可领取次数
+			av, _ := strconv.Atoi(mess.AvailableTimes)
+			av -= 1
+			//已领取次数
+			re, _ := strconv.Atoi(mess.ReceivedTimes)
+			re += 1
+			mess.ReceivedTimes = strconv.Itoa(re)
+			mess.AvailableTimes = strconv.Itoa(av)
+			//提交更改后的数据
+			_, err := c2.Do("SET", key, struct2json(mess))
+			if err != nil {
+				return nil, internal.InternalServiceError(err.Error())
+			} else {
+				fmt.Println("set ok.")
+			}
 		} else {
-			fmt.Println("set ok.")
+			getList := new(GetList)
+			//用户名
+			getList.GetorName = User.UserName
+			//领取时间
+			getList.GetTime = time.Now().Format("2006-01-02 15:04:05")
+			mess.GetList = append(mess.GetList, *getList)
+			//可领取次数
+			av, _ := strconv.Atoi(mess.AvailableTimes)
+			av -= 1
+			//已领取次数
+			re, _ := strconv.Atoi(mess.ReceivedTimes)
+			re += 1
+			mess.ReceivedTimes = strconv.Itoa(re)
+			mess.AvailableTimes = strconv.Itoa(av)
+			//提交更改后的数据
+			_, err := c2.Do("SET", key, struct2json(mess))
+			if err != nil {
+				return nil, internal.InternalServiceError(err.Error())
+			} else {
+				fmt.Println("set ok.")
+			}
 		}
 		//返回礼品内容
 		return message.List, nil
 	}
 }
 
-// CheckKey 判断数据是否存在
+// CheckKey 判断礼品码是否存在
 func CheckKey(key string) bool {
 	c := model2.RedisPool.Get()
 	defer c.Close()
@@ -155,6 +195,17 @@ func CheckKey(key string) bool {
 	} else {
 		return exist
 	}
+}
+
+func CheckId(uid string) bool {
+	c := model2.Client
+	message := model2.Message{}
+	err := c.Find(bson.M{"uid": uid}).One(&message)
+	if err != nil {
+		fmt.Println("未找到此uid，请注册")
+		return false
+	}
+	return true
 }
 
 //判断用户是否已经领取过礼品

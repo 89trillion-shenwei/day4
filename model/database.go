@@ -11,8 +11,6 @@ import (
 
 // ManRedisKey redis接口
 type ManRedisKey interface {
-	StrSet(value1, value2 interface{})  //管理员输入数据
-	StrGet(value interface{}) string    //管理员查询数据
 	StrUpdate(value interface{}) string //用户获取礼品并更新redis
 	StrHave(value interface{}) bool     //判断数据库中是否有此条数据
 }
@@ -28,6 +26,7 @@ const (
 
 //创建用户
 var RedisPool *redis.Pool
+var RedisPool1 *redis.Pool
 
 // NewRedisPool 新建redis池
 func NewRedisPool(redisURL string, Database int) *redis.Pool {
