@@ -16,15 +16,13 @@ func (err GlobalError) Error() string {
 
 const (
 	NoKey           = 1001 //礼品码不存在
-	KeyExpired      = 1002 //礼品码过期
-	UserHasEeceived = 1003 //不可重复领取
-	NoGift          = 1004 //礼品全部领完
-	IsEmpty         = 1005 //参数不能为空
-	ValidPeriod     = 1006 //有效期不能小于当前时间
-	LenFalse        = 1007 //礼品码不合法
-	InternalService = 1008 //内部服务错误
-	NoReg           = 1009 //账号不存在请重新输入或注册
-	NoCanGetUser    = 1010 //非指定用户
+	UserHasEeceived = 1002 //不可重复领取
+	NoGift          = 1003 //礼品全部领完
+	IsEmpty         = 1004 //参数不能为空
+	LenFalse        = 1005 //礼品码不合法
+	InternalService = 1006 //内部服务错误
+	NoReg           = 1007 //账号不存在请重新输入或注册
+	NoCanGetUser    = 1008 //非指定用户
 )
 
 // NoKeyError  礼品码不存在
@@ -32,15 +30,6 @@ func NoKeyError(message string) GlobalError {
 	return GlobalError{
 		Status:  http.StatusForbidden,
 		Code:    NoKey,
-		Message: message,
-	}
-}
-
-// KeyExpiredError 礼品码过期
-func KeyExpiredError(message string) GlobalError {
-	return GlobalError{
-		Status:  http.StatusForbidden,
-		Code:    KeyExpired,
 		Message: message,
 	}
 }
@@ -68,15 +57,6 @@ func IsEmptyError(message string) GlobalError {
 	return GlobalError{
 		Status:  http.StatusForbidden,
 		Code:    IsEmpty,
-		Message: message,
-	}
-}
-
-//ValidPeriodError  有效期不能小于当前时间
-func ValidPeriodError(message string) GlobalError {
-	return GlobalError{
-		Status:  http.StatusForbidden,
-		Code:    ValidPeriod,
 		Message: message,
 	}
 }
