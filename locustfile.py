@@ -14,4 +14,4 @@ class WebsiteUser(HttpUser):
 
     @task
     def index3(self):
-        self.client.post("/receiveGifts",{"key":"c2906d4b","username":"1626940055231998000"})
+        self.client.post("/receiveGifts",{"key":"45e72e99","username":"1626940055231998000"})
