@@ -2,7 +2,7 @@ package service
 
 import (
 	"day4/internal"
-	model2 "day4/model"
+	"day4/internal/model"
 	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
@@ -100,8 +100,8 @@ func json2struct1(byts []byte, message *Mess) bool {
 func (User *User) StrUpdate(key string) ([]List, error) {
 	//上锁
 	releaseLock()
-	c1 := model2.RedisPool.Get()
-	c2 := model2.RedisPool1.Get()
+	c1 := model.RedisPool.Get()
+	c2 := model.RedisPool1.Get()
 	defer c1.Close()
 	defer c2.Close()
 	//查询数据
@@ -227,7 +227,7 @@ func (User *User) StrUpdate(key string) ([]List, error) {
 
 // CheckKey 判断礼品码是否存在
 func CheckKey(key string) bool {
-	c := model2.RedisPool.Get()
+	c := model.RedisPool.Get()
 	defer c.Close()
 	exist, err := redis.Bool(c.Do("EXISTS", key))
 	if err != nil {
@@ -238,8 +238,8 @@ func CheckKey(key string) bool {
 }
 
 func CheckId(uid string) bool {
-	c := model2.Client
-	message := model2.Message{}
+	c := model.Client
+	message := model.Message{}
 	err := c.Find(bson.M{"uid": uid}).One(&message)
 	if err != nil {
 		fmt.Println("未找到此uid，请注册")

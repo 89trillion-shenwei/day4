@@ -1,9 +1,9 @@
 package handler
 
 import (
+	model2 "day4/internal/model"
 	"day4/internal/service"
 	"day4/internal/util"
-	"day4/model"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
@@ -11,10 +11,10 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	client := model.GetClient()
+	client := model2.GetClient()
 	str, _ := Login("1626945193510426000", client)
 	var data []byte = []byte(str)
-	message := model.Message{}
+	message := model2.Message{}
 	err := json.Unmarshal(data, &message)
 	if err != nil {
 		t.Log(err.Error())
@@ -30,11 +30,11 @@ func TestLogin(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
-	client := model.GetClient()
+	client := model2.GetClient()
 	uid, _ := Register(client)
 	str, _ := Login(uid, client)
 	var data = []byte(str)
-	message := model.Message{}
+	message := model2.Message{}
 	err := json.Unmarshal(data, &message)
 	if err != nil {
 		t.Log(err.Error())
@@ -52,7 +52,7 @@ func TestRegister(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	util.Init()
 	//data :=make([]byte,0)
-	client := model.GetClient()
+	client := model2.GetClient()
 	uid, err := Register(client)
 	if err != nil {
 		fmt.Println(err)
@@ -63,7 +63,7 @@ func TestUpdate(t *testing.T) {
 	if err1 != nil {
 		t.Log(err1)
 	}
-	ge := model.GeneralReward{}
+	ge := model2.GeneralReward{}
 	proto.Unmarshal(data, &ge)
 	if err1 != nil {
 		fmt.Println(err1)

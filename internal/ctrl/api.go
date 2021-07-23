@@ -3,8 +3,8 @@ package ctrl
 import (
 	"day4/internal"
 	"day4/internal/handler"
+	model2 "day4/internal/model"
 	"day4/internal/service"
-	"day4/model"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -13,7 +13,7 @@ import (
 func LoginApi(c *gin.Context) (string, error) {
 	//message :=model.Message{}
 	uid := c.PostForm("uid")
-	client := model.GetClient()
+	client := model2.GetClient()
 	json, err := handler.Login(uid, client)
 	if err != nil {
 		return "", err
@@ -23,7 +23,7 @@ func LoginApi(c *gin.Context) (string, error) {
 
 // RegisterApi 注册api
 func RegisterApi(c *gin.Context) (string, error) {
-	client := model.GetClient()
+	client := model2.GetClient()
 	uid, err := handler.Register(client)
 	if err != nil {
 		return "", err

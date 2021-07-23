@@ -2,8 +2,8 @@ package handler
 
 import (
 	"day4/internal"
+	model2 "day4/internal/model"
 	"day4/internal/service"
-	"day4/model"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
@@ -14,14 +14,14 @@ import (
 )
 
 func Login(uid string, client *mgo.Collection) (string, error) {
-	message := model.Message{}
+	message := model2.Message{}
 	err := client.Find(bson.M{"uid": uid}).One(&message)
 	if err != nil {
 		fmt.Println("未找到此uid，请注册")
 		return "", internal.NoRegError("未找到此uid，请注册,登录失败,错误原因为：" + err.Error())
 	}
 	//登录成功，返回数据库数据
-	message1 := model.Message{}
+	message1 := model2.Message{}
 	err1 := client.Find(bson.M{"uid": uid}).One(&message1)
 	if err1 != nil {
 		return "", internal.InternalServiceError("根据uid查询数据失败，错误原因为：" + err.Error())
@@ -32,7 +32,7 @@ func Login(uid string, client *mgo.Collection) (string, error) {
 
 //注册
 func Register(client *mgo.Collection) (string, error) {
-	message := model.Message{}
+	message := model2.Message{}
 	message.UID = RandomCode()
 	message.DiamondNum = "0"
 	message.GoldNum = "0"
@@ -66,7 +66,7 @@ func Update(user service.User, key string) ([]byte, error) {
 			return nil, err
 		}
 		//声明接收数据的结构体
-		general := model.GeneralReward{}
+		general := model2.GeneralReward{}
 		//变化量
 		change := make(map[uint32]uint64)
 		//余额
@@ -77,11 +77,11 @@ func Update(user service.User, key string) ([]byte, error) {
 		for i := 0; i < len(lists); i++ {
 			change[String2UInt32(lists[i].Name)] = String2UInt64(lists[i].Amount)
 		}
-		message := model.Message{}
+		message := model2.Message{}
 		general.Code = String2Int32(user.UserName) //用户uid
 		general.Msg = "用户uid为" + user.UserName + ",金币id为1001，钻石id为1002"
 		//查询当前mongo数据库中的用户金币和钻石数
-		model.Client.Find(bson.M{"uid": user.UserName}).One(&message)
+		model2.Client.Find(bson.M{"uid": user.UserName}).One(&message)
 		balance[1001] = String2UInt64(message.GoldNum)
 		balance[1002] = String2UInt64(message.DiamondNum)
 		//计算变化后的值
@@ -90,7 +90,7 @@ func Update(user service.User, key string) ([]byte, error) {
 		fmt.Println(counter[1001])
 		fmt.Println(counter[1002])
 		//储存到mongo数据库中
-		client := model.GetClient()
+		client := model2.GetClient()
 		testUpdate(client, user.UserName, strconv.FormatUint(counter[1001], 10), strconv.FormatUint(counter[1002], 10))
 		general.Changes = change
 		general.Balance = balance
