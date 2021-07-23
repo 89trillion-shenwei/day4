@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"gopkg.in/mgo.v2/bson"
+	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -55,6 +56,7 @@ type Mess struct {
 	AvailableTimes string    //可领取次数
 	ReceivedTimes  string    //已领取次数
 	GiftCode       string    //礼品码
+	key            string    //计数
 	GetList        []GetList //领取列表
 }
 
@@ -146,6 +148,12 @@ func (User *User) StrUpdate(key string) ([]List, error) {
 				} else {
 					fmt.Println("set ok.")
 				}
+				//incr key
+				_, err1 := redis.Int64(c2.Do("INCR", "key"))
+				if err1 != nil {
+					log.Println("INCR failed:", err)
+					return nil, internal.InternalServiceError(err1.Error())
+				}
 			} else {
 				return nil, internal.NoCanGetUserError("非指定用户")
 			}
@@ -175,7 +183,13 @@ func (User *User) StrUpdate(key string) ([]List, error) {
 			} else {
 				fmt.Println("set ok.")
 			}
-		} else {
+			//incr key
+			_, err1 := redis.Int64(c2.Do("INCR", "key"))
+			if err1 != nil {
+				log.Println("INCR failed:", err)
+				return nil, internal.InternalServiceError(err1.Error())
+			}
+		} else { //不限制用户，不限制次数
 			getList := new(GetList)
 			//用户名
 			getList.GetorName = User.UserName
@@ -196,6 +210,12 @@ func (User *User) StrUpdate(key string) ([]List, error) {
 				return nil, internal.InternalServiceError(err.Error())
 			} else {
 				fmt.Println("set ok.")
+			}
+			//incr key
+			_, err1 := redis.Int64(c2.Do("INCR", "key"))
+			if err1 != nil {
+				log.Println("INCR failed:", err)
+				return nil, internal.InternalServiceError(err1.Error())
 			}
 		}
 		//解锁
