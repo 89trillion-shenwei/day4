@@ -237,6 +237,7 @@ func CheckKey(key string) bool {
 	}
 }
 
+// CheckId 判断用户是否存在
 func CheckId(uid string) bool {
 	c := model.Client
 	message := model.Message{}
