@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+//登录
 func Login(uid string, client *mgo.Collection) (string, error) {
 	message := model2.Message{}
 	err := client.Find(bson.M{"uid": uid}).One(&message)
