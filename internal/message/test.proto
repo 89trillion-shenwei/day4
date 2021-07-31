@@ -1,7 +1,7 @@
 
 syntax = "proto3";
 
-option go_package="./;model";
+option go_package="./;message";
 package response;
 
 // 通用奖励消息
