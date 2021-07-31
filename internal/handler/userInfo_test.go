@@ -1,20 +1,22 @@
 package handler
 
 import (
+	"day4/internal/message"
 	model2 "day4/internal/model"
 	"day4/internal/service"
 	"day4/internal/util"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func TestLogin(t *testing.T) {
 	client := model2.GetClient()
 	str, _ := Login("1626945193510426000", client)
 	var data []byte = []byte(str)
-	message := model2.Message{}
+	message := model2.Message1{}
 	err := json.Unmarshal(data, &message)
 	if err != nil {
 		t.Log(err.Error())
@@ -34,7 +36,7 @@ func TestRegister(t *testing.T) {
 	uid, _ := Register(client)
 	str, _ := Login(uid, client)
 	var data = []byte(str)
-	message := model2.Message{}
+	message := model2.Message1{}
 	err := json.Unmarshal(data, &message)
 	if err != nil {
 		t.Log(err.Error())
@@ -63,7 +65,7 @@ func TestUpdate(t *testing.T) {
 	if err1 != nil {
 		t.Log(err1)
 	}
-	ge := model2.GeneralReward{}
+	ge := message.GeneralReward{}
 	proto.Unmarshal(data, &ge)
 	if err1 != nil {
 		fmt.Println(err1)
