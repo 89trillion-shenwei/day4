@@ -29,18 +29,20 @@
 │   ├── handler
 │   │   ├── userInfo.go
 │   │   └── userInfo_test.go
+│   ├── message
+│   │   ├── test.pb.go
+│   │   └── test.proto
+│   ├── model
+│   │   ├── common.go
+│   │   ├── newMongo.go
+│   │   └── newRedis.go
 │   ├── router
 │   │   └── router.go
 │   ├── service
 │   │   └── dealData.go
 │   └── util
 │       └── util.go
-├── locustfile.py
-└── model
-    ├── database.go
-    ├── mongo.go
-    ├── test.pb.go
-    └── test.proto
+└── locustfile.py
 
 ```
 
@@ -52,18 +54,64 @@
 |  路由层   | /internal/router/router.go                                   | 路由转发                                        | 被应用层调用，调用控制层  | 不可同层调用 |
 |  控制层   | /internal/ctrl/api.go                                        | 请求参数处理，响应                              | 被路由层调用，调用handler | 不可同层调用 |
 | handler层 | /internal/handler/userInfo.go                                | 处理具体业务                                    | 被控制层调用              | 不可同层调用 |
-|  model层  | /app/model/database.go,/app/model/mongo.go，/app/model/test.proto | redis储存需要的数据结构,mongo储存需要的数据结构 | 被handler调用             | 不可同层调用 |
+|  model层  | /app/model/newRedis.go,/app/model/newMongo.go，/app/model/common.go | redis储存需要的数据结构,mongo储存需要的数据结构 | 被handler调用             | 不可同层调用 |
 | 压力测试  | locustfile.py                                                | 进行压力测试                                    | 无调用关系                | 不可同层调用 |
 |  gError   | /internal/gError                                             | 统一异常处理                                    | 被handler调用             | 不可同层调用 |
-| service层 | /internal/service/dealDate.go                                | 操作redis数据库和mongo数据库                    | 被handler层调用           | 不可同层调用 |
+| service层 | /internal/service/dealDate.go                                | 操作redis数据库和以及错误回滚                   | 被handler层调用           | 不可同层调用 |
+|  message  | /internal/message/test.proto                                 | 储存proto文件                                   | 被其他层调用              | 不可同层调用 |
 
 ## 4.存储设计
 
 mongo数据库通过struct的形式储存，分别为uid，金币数和钻石数
 
+```
+type Message1 struct {
+	UID        string `json:"uid"`        //用户id
+	GoldNum    string `json:"goldnum"`    //金币数
+	DiamondNum string `json:"diamondnum"` //钻石数
+}
+```
+
 protobuf使用文件给的格式
 
+```
+// 通用奖励消息
+message GeneralReward {
+  int32 code = 1;
+  string msg = 2;
+  map<uint32, uint64> changes = 3; // 客户端展示奖励的部分 : 道具ID -> 道具数量
+  map<uint32, uint64> balance = 4; // 道具有变化部分的当前余额 : 道具ID -> 道具数量
+  map<uint32, uint64> counter = 5; // 计数器当前值 : counterType -> 计数
+  string ext = 6; // 扩展字段，IAP使用
+}
+```
+
 redis分为礼品表和领取信息表
+
+```
+// Message redis存储的礼品码信息
+type Message struct {
+	Description string //礼品描述
+	CodeType    string //礼品码类型
+	List        []List //礼品内容列表（物品，数量）
+	ValidPeriod string //有效期
+	GiftCode    string //礼品码
+	CanGetUser  string //允许领取用户
+	Creator     string //创建者账号
+	CreatTime   string //创建时间
+}
+
+// Mess redis存储的领取信息
+type Mess struct {
+	AvailableTimes string    //可领取次数
+	ReceivedTimes  string    //已领取次数
+	GiftCode       string    //礼品码
+	key            string    //计数
+	GetList        []GetList //领取列表
+}
+```
+
+
 
 ## 5.接口设计
 
@@ -74,7 +122,7 @@ http post
 | 接口地址                    | 请求参数                                                 | 描述         |
 | --------------------------- | -------------------------------------------------------- | ------------ |
 | localhost:8080/login        | uid(示例：1627009174467598000)                           | 登录         |
-| localhost:8080/register     |                                                          | 注册         |
+| localhost:8080/register     | 无                                                       | 注册         |
 | localhost:8080/receiveGifts | key(示例：013f95fa)，username(示例：1627009174467598000) | 用户领取礼品 |
 
 响应状态码
@@ -94,16 +142,9 @@ http post
 
 ```
   "github.com/gin-gonic/gin"
-	"net/http"
-	"encoding/json"
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"strconv"
-	"time"
-	"encoding/json"
-	"testing"
 	"github.com/garyburd/redigo/redis"
 ```
 
