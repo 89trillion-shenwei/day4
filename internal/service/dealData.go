@@ -151,6 +151,11 @@ func (User *User) StrUpdate(key string) ([]model.List, error) {
 func ReturnBack(key string) error {
 	c := model.RedisPool1.Get()
 	_, err := c.Do("SET", key, model.Struct2json(model.Data))
+	_, err1 := redis.Int64(c.Do("DECR", "key"))
+	if err1 != nil {
+		log.Println("DECR failed:", err)
+		return internal.InternalServiceError(err1.Error())
+	}
 	if err != nil {
 		return internal.InternalServiceError("回调失败")
 	} else {
